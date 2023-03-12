@@ -7,7 +7,8 @@
 clear all
 clc
 
- os = 'windows';
+% select your PC OS
+ os = 'windows'; 
 % os = 'mac';
 
 switch os
@@ -41,11 +42,12 @@ ncores  =  8  % number of core of CPU for parallel computing
 data_country = 1  % 1: Japan, 2:US
 def_switch   = 1  % 1st deference for GDP = 1, level = 0
 
-%% setting 
-nsim       = ncores*100   % # of particles of parameters
-nstage     = 2           % # of stages
+%% setting of SMC procedure
+nsim       = ncores*50   % # of particles of parameters
+nstage     = 5           % # of stages
 npara      = 18;         % # of parameters
-% cc1      = 0.035 ;     % adjustment coefficient of MH
+cc1        =   0.5 ;  % adjustment coefficient of SMC
+N_Blocks = 5;     % Number of random Blocks of sampling 
 
 %% parallel 
  

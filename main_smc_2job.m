@@ -8,17 +8,20 @@
    load_data;
 %    dataplot;
 
-%% setting 
+%% setting of  estimation
 set_itr_disp = 1;
-cc1        =   0.5 ;
+% cc1        =   0.5 ;  % adjustment coefficient of SMC
+% N_Blocks = 3;     % Number of random Blocks of sampling 
 
-  I   = 100;
-  J   = 2;
-  n_v = I*J + 1;    % number of jump variables (value function + inflation)
-  n_g = I*J + 2 ;   % number of endogeneous state variables (distribution + monetary + Fiscal policy)
+
+%% setting of  environment of HANK model
+  I   = 100;   % number of grids of one ASSET
+  J   = 2;       % number of grids of states of JOB
+  n_v = I*J + 1;    % number of JUMP variables (value function + inflation)
+  n_g = I*J + 2 ;   % number of ENDOGENOUS state variables (distribution + monetary + Fiscal policy)
   n_p = 6;          % number of static relations: bond-market clearing, labor market clearing, consumption, output, total assets
-  n_shocks = 3;     % only monetary policy shock is considered
-  nEErrors = n_v;
+  n_shocks = 3;     % number of SHOCKS, i.e., monetary policy shock, fiscal policy shock, TFP shock.
+  nEErrors = n_v;   
   nVars = n_v + n_g + n_p;
   
   
@@ -32,7 +35,7 @@ cc1        =   0.5 ;
     weight = ones(1,nsim);
     priornew = zeros(nsim,1);
     
-    cc = cc1*diag(Pr.pstdd(1:npara) );
+    cc = cc1*diag(Pr.pstdd(1:npara) )*0.05;
 %     rrho1 = 0;
 %     rrho2 = 0;
  
@@ -150,6 +153,12 @@ for i = 1:nstage
 %  for j = 1:nsim 
  parfor j = 1:nsim  
 
+     % initial setting
+     para_old = para_Resamp(j,:) ;
+     post_old = lik_Resamp(j,1);
+     post_Resamp(j,:) = [ lik_Resamp(j,1) lik_Resamp(j,2) 0 lik_Resamp(j,4)];
+     %
+
       if mod(j,set_itr_disp)==0
              disp( ' ' );  
             disp([ ' Step 3: Mutation ' num2str(j), ' th-particle of ' num2str(i), '/' ...
@@ -165,40 +174,44 @@ for i = 1:nstage
                        disp([ 'out of bound of parameters' ]);
                       pause(0.05) 
                  end      
+                   post_Resamp(j,:) = [ lik_Resamp(j,1) lik_Resamp(j,2) 0 lik_Resamp(j,4)];
         else
-            
-            [ likenew,~, rrho2] =  cal_likelihood(YY, I,J,n_v,n_g,n_p,...
-                          n_shocks,para_new(j,:),obs_ratio,def_switch );
- 
-        end                
+            %%  RANDOM BLOCK SAMPLING OF MH STEP
+            para_select =rand(1,npara);       
+
+            for k=1:N_Blocks
+                para_block_select=(para_select<k/N_Blocks)-(para_select<(k-1)/N_Blocks);
+                para_candiate = para_block_select.*para_new(j,:)+(1-para_block_select).*para_old;
+           
+                [ likenew,~, rrho2] =  cal_likelihood(YY, I,J,n_v,n_g,n_p,...
+                                   n_shocks, para_candiate, obs_ratio,def_switch );                  
                
-        %  calculate prior density   
-        priornew(j) =priodens(para_new(j,:), Pr.pmean, Pr.pstdd, Pr.pshape);   
-        postnew =  (i/nstage)^2*likenew + priornew(j); 
+                 %  calculate prior density   
+                  priornew(j) =priodens(para_candiate , Pr.pmean, Pr.pstdd, Pr.pshape);   
+                  postnew =  (i/nstage)^2*likenew + priornew(j); 
         
-        % MH_step
-        r = min(1,exp(postnew-lik_Resamp(j,1) ));   
-        
-        if (rand < r)   
-           weight(j)=1; 
-           stock_accept_rate(i,j) = 1;
-           para_Resamp(j,:) = para_new(j,:) ;           
-           post_Resamp(j,:) = [postnew  likenew   1 rrho2  ];
-            if mod(j,set_itr_disp)==0
-                 disp( [ 'post = ' num2str(postnew) ',   like = '  num2str(likenew) ...
-                         ]);
-            end         
-%                  ', para = '  num2str(para_new(j,:)) ] );
-        else
-            post_Resamp(j,:) = [ lik_Resamp(j,1) lik_Resamp(j,2) 0 lik_Resamp(j,4)];
-             if mod(j,set_itr_disp)==0
-                    disp( ['no change: ', 'post = ', num2str(lik_Resamp(j,1)),...
-                          ',   like = '  num2str(lik_Resamp(j,2)) ...
-                         ]);
-             end       
-        end 
-        
-end   
+                 % MH_step of k-th BLOCK of paramter sampling
+                 r = min(1,exp(postnew-post_old ));   
+                  if (rand < r)   
+                       weight(j)=1; 
+                       stock_accept_rate(i,j) = 1;
+                       para_Resamp(j,:) = para_new(j,:) ;   para_old =  para_new(j,:);    post_old=postnew;      
+                       post_Resamp(j,:) = [postnew  likenew   1 rrho2  ];
+                         if mod(j,set_itr_disp)==0
+                            disp( [ 'post = ' num2str(postnew) ',   like = '  num2str(likenew) ...
+                                ]);
+                        end         
+                  else
+%                         post_Resamp(j,:) = [ lik_Resamp(j,1) lik_Resamp(j,2) 0 lik_Resamp(j,4)];
+                        if mod(j,set_itr_disp)==0
+                             disp( ['no change: ', 'post = ', num2str(lik_Resamp(j,1)),...
+                               ',   like = '  num2str(lik_Resamp(j,2)) ...
+                              ]);
+                       end       
+                  end % end of MH
+            end   % end of block sampling 
+        end       % end of check
+ end  % end of parfor  
          R =   mean(stock_accept_rate(i,:))*100;
          % scaling factor of Algorithm 10 of Herbst and Schorfheide (2016, Ch5, p113)        
          x=6; 
