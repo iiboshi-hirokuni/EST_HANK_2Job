@@ -7,8 +7,7 @@
 clear all
 clc
 
-% select your PC OS
- os = 'windows'; 
+ os = 'windows';
 % os = 'mac';
 
 switch os
@@ -37,17 +36,16 @@ end
 tstart = tic;                           % Job timer start
 
 disp('Start SMC^2 ')
-ncores  = 4  % number of core of CPU for parallel computing 
+ncores  =  4  % number of core of CPU for parallel computing 
 
 data_country = 1  % 1: Japan, 2:US
 def_switch   = 1  % 1st deference for GDP = 1, level = 0
 
-%% setting of SMC procedure
-nsim       = ncores*50   % # of particles of parameters
-nstage     = 5           % # of stages
+%% setting 
+nsim       = ncores*20   % # of particles of parameters
+nstage     = 2           % # of stages
 npara      = 18;         % # of parameters
-cc1        =   0.5 ;  % adjustment coefficient of SMC
-N_Blocks = 5;     % Number of random Blocks of sampling 
+% cc1      = 0.035 ;     % adjustment coefficient of MH
 
 %% parallel 
  

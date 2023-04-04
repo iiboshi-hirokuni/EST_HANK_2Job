@@ -10,8 +10,8 @@
 
 %% setting of  estimation
 set_itr_disp = 1;
-% cc1        =   0.5 ;  % adjustment coefficient of SMC
-% N_Blocks = 3;     % Number of random Blocks of sampling 
+cc1        =   0.5 ;  % adjustment coefficient of SMC
+N_Blocks = 1;     % Number of random Blocks of sampling 
 
 
 %% setting of  environment of HANK model
@@ -34,8 +34,9 @@ set_itr_disp = 1;
     psi = 0;
     weight = ones(1,nsim);
     priornew = zeros(nsim,1);
+    parasim_stock   =  zeros(nsim, (npara+4),nstage);
     
-    cc = cc1*diag(Pr.pstdd(1:npara) )*0.05;
+    cc = cc1*diag(Pr.pstdd(1:npara) );
 %     rrho1 = 0;
 %     rrho2 = 0;
  
@@ -176,7 +177,7 @@ for i = 1:nstage
                  end      
                    post_Resamp(j,:) = [ lik_Resamp(j,1) lik_Resamp(j,2) 0 lik_Resamp(j,4)];
         else
-            %%  RANDOM BLOCK SAMPLING OF MH STEP
+            
             para_select =rand(1,npara);       
 
             for k=1:N_Blocks
@@ -190,28 +191,28 @@ for i = 1:nstage
                   priornew(j) =priodens(para_candiate , Pr.pmean, Pr.pstdd, Pr.pshape);   
                   postnew =  (i/nstage)^2*likenew + priornew(j); 
         
-                 % MH_step of k-th BLOCK of paramter sampling
+                 % MH_step
                  r = min(1,exp(postnew-post_old ));   
                   if (rand < r)   
                        weight(j)=1; 
                        stock_accept_rate(i,j) = 1;
-                       para_Resamp(j,:) = para_new(j,:) ;   para_old =  para_new(j,:);    post_old=postnew;      
+                       para_Resamp(j,:) = para_new(j,:) ;   para_old =  para_new(j,:);          
                        post_Resamp(j,:) = [postnew  likenew   1 rrho2  ];
                          if mod(j,set_itr_disp)==0
                             disp( [ 'post = ' num2str(postnew) ',   like = '  num2str(likenew) ...
                                 ]);
                         end         
                   else
-%                         post_Resamp(j,:) = [ lik_Resamp(j,1) lik_Resamp(j,2) 0 lik_Resamp(j,4)];
+                        post_Resamp(j,:) = [ lik_Resamp(j,1) lik_Resamp(j,2) 0 lik_Resamp(j,4)];
                         if mod(j,set_itr_disp)==0
                              disp( ['no change: ', 'post = ', num2str(lik_Resamp(j,1)),...
                                ',   like = '  num2str(lik_Resamp(j,2)) ...
                               ]);
                        end       
-                  end % end of MH
-            end   % end of block sampling 
-        end       % end of check
- end  % end of parfor  
+                  end 
+            end    
+        end       
+end   
          R =   mean(stock_accept_rate(i,:))*100;
          % scaling factor of Algorithm 10 of Herbst and Schorfheide (2016, Ch5, p113)        
          x=6; 
@@ -226,9 +227,15 @@ for i = 1:nstage
          parasim = para_Resamp;
          lik_stock = post_Resamp;
          
+         %=====================================
+          parasim_stock(:,1:F.npara,i)                     =  parasim;
+          parasim_stock(:,F.npara+1:F.npara+3,i)   =  lik_stock;
+          parasim_stock(:,F.npara+4,i)                   =  psi*ones(F.nsim_final,1);   
+         %=====================================
+
         %% save file 
           file_name = ['./output/save_temp_para_' num2str(nsim) '_'  num2str(i) ];                      
-          save(file_name,'para_Resamp','post_Resamp', 'stock_accept_rate');
+          save(file_name,'para_Resamp','post_Resamp', 'stock_accept_rate',"parasim_stock");
           
         %% plot graph
           plot_dist([parasim,lik_stock], npara,Pr,i)
