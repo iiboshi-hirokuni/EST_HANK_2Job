@@ -37,7 +37,7 @@ end
 tstart = tic;                           % Job timer start
 
 disp('Start SMC^2 ')
-ncores  =  8  % number of core of CPU for parallel computing 
+ncores  = 4  % number of core of CPU for parallel computing 
 
 data_country = 1  % 1: Japan, 2:US
 def_switch   = 1  % 1st deference for GDP = 1, level = 0
